@@ -1,0 +1,192 @@
+import jwt from "jsonwebtoken";
+import cors from "cors";
+import bcrypt from "bcryptjs";
+import express from "express";
+import {prismaClient} from "db/client";
+import { AuthInput } from "./types";
+import { authMiddleware } from "./middleware";
+const app=express();
+app.use(cors({ origin: true }));
+app.use(express.json());
+
+app.post("/website", authMiddleware, async (req, res) => {
+    if (!req.body.url) {
+        res.status(411).json({ message: "URL is required in the request body." });
+        return;
+    }
+    const website = await prismaClient.website.create({
+        data: {
+            url: req.body.url,
+            time_added: new Date(),
+            user_id: req.userId!
+        }
+    })
+
+    res.json({
+        id: website.id
+    })
+});
+
+app.get("/regions", authMiddleware, async (_req, res) => {
+    const regions = await prismaClient.region.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+    });
+    res.json({ regions });
+});
+
+app.get("/websites", authMiddleware, async (req, res) => {
+    const websites = await prismaClient.website.findMany({
+        where: {
+            user_id: req.userId!,
+        },
+        include: {
+            ticks: {
+                orderBy: [{
+                    createdAt: "desc",
+                }],
+                take: 20,
+                include: {
+                    region: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+                },
+            },
+        },
+        orderBy: {
+            time_added: "desc",
+        },
+    });
+
+    res.json({
+        websites,
+    });
+});
+
+app.get("/status/:websiteId", authMiddleware, async (req, res) => {
+    const website = await prismaClient.website.findFirst({
+        where: {
+            user_id: req.userId!,
+            id: req.params.websiteId as string,
+        },
+        include: {
+            ticks: {
+                orderBy: [{
+                    createdAt: 'desc',
+                }],
+                take: 20,
+                include: {
+                    region: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+                },
+            }
+        }
+    })
+
+    if (!website) {
+        res.status(409).json({
+            message: "Website not found"
+        })
+        return;
+    }
+
+    res.json({
+        url: website.url,
+        id: website.id,
+        user_id: website.user_id,
+        time_added: website.time_added,
+        ticks: website.ticks,
+    })
+
+})
+
+
+app.post("/user/signup",async (req,res)=>{
+    const data =AuthInput.safeParse(req.body);
+    if(!data.success){
+        res.status(403).json({ message: "Invalid username or password" });
+        return;
+    }
+
+    const existing = await prismaClient.user.findFirst({
+        where: { username: data.data.username },
+    });
+    if (existing) {
+        res.status(409).json({ message: "Account already exists" });
+        return;
+    }
+
+    try{
+        const hashedPassword = await bcrypt.hash(data.data.password, 10);
+        let user=await prismaClient.user.create({
+            data:{
+                username: data.data.username,
+                password: hashedPassword,
+            }
+        })
+        res.status(201).json({
+            id: user.id
+        });
+    } catch(error){
+        res.status(403).json({ message: "Signup failed" });
+        return;
+    }
+});
+
+app.post("/user/signin",async (req,res)=>{
+    const data =AuthInput.safeParse(req.body);
+    if(!data.success){
+        res.status(403).json({ message: "Invalid username or password" });
+        return;
+    }
+
+    const user = await prismaClient.user.findFirst({
+        where: { username: data.data.username },
+    });
+
+    if (!user) {
+        res.status(403).json({ message: "Invalid username or password" });
+        return;
+    }
+
+    const isHashed = user.password.startsWith("$2");
+    let valid = false;
+
+    if (isHashed) {
+        valid = await bcrypt.compare(data.data.password, user.password);
+    } else {
+        // Migrate legacy plaintext passwords
+        valid = user.password === data.data.password;
+        if (valid) {
+            const hashedPassword = await bcrypt.hash(data.data.password, 10);
+            await prismaClient.user.update({
+                where: { id: user.id },
+                data: { password: hashedPassword },
+            });
+        }
+    }
+
+    if (!valid) {
+        res.status(403).json({ message: "Invalid username or password" });
+        return;
+    }
+
+    const token = jwt.sign({
+        sub: user.id,
+    }, process.env.JWT_SECRET!);
+
+    res.json({
+        jwt: token,
+    });
+})
+ 
+app.listen(process.env.PORT || 3000, () => {
+    console.log(`Server running on http://localhost:${process.env.PORT || 3000}`);
+  });

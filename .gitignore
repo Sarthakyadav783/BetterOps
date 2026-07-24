@@ -36,3 +36,15 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+*.rdb
+dump.rdb
+Todo.txt
+Untitled
+"ChatGPT Image"*
+.agents/
+.cursor/
+.agents/
+.claude/
+.cursor/
+.windsurf/
+skills-lock.json
