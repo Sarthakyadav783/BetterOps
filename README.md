@@ -6,6 +6,9 @@ Multi-region website checks powered by Redis Streams: add a URL, workers verify 
 
 ## Screenshots
 
+### Architecture
+![Architecture](images/Architecture.png)
+
 ### Home
 ![Home page](images/home-page.png)
 
@@ -17,8 +20,6 @@ Multi-region website checks powered by Redis Streams: add a URL, workers verify 
 
 ![Website detail timeline](images/test-web2.png)
 
-### Architecture
-![Architecture](images/Architecture.png)
 
 ## Stack
 
