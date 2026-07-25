@@ -24,12 +24,28 @@ export interface AddWebsiteResponse {
   id: string;
 }
 
+export type StatusRange = "1h" | "24h" | "7d" | "30d";
+
+export interface WebsiteStats {
+  totalChecks: number;
+  upCount: number;
+  downCount: number;
+  unknownCount: number;
+  avgResponseTimeMs: number;
+  uptimePercentage: number;
+  timelineCount: number;
+  truncated: boolean;
+}
+
 export interface Website {
   id: string;
   url: string;
   user_id: string;
   time_added: string;
   ticks: WebsiteTick[];
+  range?: StatusRange;
+  since?: string;
+  stats?: WebsiteStats;
 }
 
 export interface WebsiteTick {

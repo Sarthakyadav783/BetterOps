@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-india
+  namespace: betterops
+  labels:
+    app: consumer
+    region: India
+    app.kubernetes.io/part-of: betterops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer
+      region: India
+  template:
+    metadata:
+      labels:
+        app: consumer
+        region: India
+    spec:
+      containers:
+        - name: consumer
+          image: sarthakyadav783/betterops-consumer:latest
+          imagePullPolicy: Always
+          env:
+            - name: REGION_ID
+              value: India
+            - name: WORKER_ID
+              value: India-1
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: betterops-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: betterops-secrets
+                  key: REDIS_URL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: "500m"
+              memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-usa
+  namespace: betterops
+  labels:
+    app: consumer
+    region: Usa
+    app.kubernetes.io/part-of: betterops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer
+      region: Usa
+  template:
+    metadata:
+      labels:
+        app: consumer
+        region: Usa
+    spec:
+      containers:
+        - name: consumer
+          image: sarthakyadav783/betterops-consumer:latest
+          imagePullPolicy: Always
+          env:
+            - name: REGION_ID
+              value: Usa
+            - name: WORKER_ID
+              value: Usa-1
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: betterops-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: betterops-secrets
+                  key: REDIS_URL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: "500m"
+              memory: 512Mi

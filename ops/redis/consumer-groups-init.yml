@@ -1,0 +1,41 @@
+# One-shot Job: create Redis Stream consumer groups India + Usa.
+# Safe to re-run: ignores BUSYGROUP if groups already exist.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: consumer-groups-init
+  namespace: betterops
+  labels:
+    app.kubernetes.io/part-of: betterops
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: consumer-groups-init
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: init
+          image: redis:7-alpine
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              REDIS_HOST="${REDIS_HOST:-redis}"
+              STREAM="better-ops:website"
+              echo "Initializing consumer groups on ${REDIS_HOST} stream=${STREAM}"
+              for GROUP in India Usa; do
+                if redis-cli -h "$REDIS_HOST" XGROUP CREATE "$STREAM" "$GROUP" '$' MKSTREAM; then
+                  echo "Created group: $GROUP"
+                else
+                  echo "Group already exists (or create skipped): $GROUP"
+                fi
+              done
+              echo "--- Groups ---"
+              redis-cli -h "$REDIS_HOST" XINFO GROUPS "$STREAM"
+          env:
+            - name: REDIS_HOST
+              value: redis.betterops.svc.cluster.local

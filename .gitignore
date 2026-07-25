@@ -48,3 +48,8 @@ Untitled
 .cursor/
 .windsurf/
 skills-lock.json
+
+# K8s secrets — never commit real secret.yml
+ops/secrets/secret.yml
+ops/secrets/**
+!ops/secrets/secret.example.yml

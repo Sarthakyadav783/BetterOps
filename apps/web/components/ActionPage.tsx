@@ -9,12 +9,13 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Clock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/HelpfullFunction";
 import { apiClient } from "@/lib/AxiosHandling";
-import type { Website } from "@/types";
+import type { StatusRange, Website } from "@/types";
 
 interface WebsiteDetailPageProps {
   websiteId: string;
@@ -22,18 +23,31 @@ interface WebsiteDetailPageProps {
 
 type Region = { id: string; name: string };
 
+const RANGE_OPTIONS: { value: StatusRange; label: string }[] = [
+  { value: "1h", label: "Last 1 hour" },
+  { value: "24h", label: "Last 24 hours" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+];
+
 export default function WebsiteDetailPage({ websiteId }: WebsiteDetailPageProps) {
   const router = useRouter();
   const [website, setWebsite] = useState<Website | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
   const [regionFilter, setRegionFilter] = useState<string>("all");
+  const [rangeFilter, setRangeFilter] = useState<StatusRange>("24h");
   const [loading, setLoading] = useState(true);
 
   const fetchWebsite = useCallback(async () => {
     setLoading(true);
     try {
+      const params = new URLSearchParams({ range: rangeFilter });
+      if (regionFilter !== "all") {
+        params.set("region", regionFilter);
+      }
+
       const [websiteRes, regionsRes] = await Promise.all([
-        apiClient.get<Website>(`/status/${websiteId}`),
+        apiClient.get<Website>(`/status/${websiteId}?${params.toString()}`),
         apiClient.get<{ regions: Region[] }>("/regions"),
       ]);
 
@@ -54,51 +68,60 @@ export default function WebsiteDetailPage({ websiteId }: WebsiteDetailPageProps)
     } finally {
       setLoading(false);
     }
-  }, [websiteId]);
+  }, [websiteId, rangeFilter, regionFilter]);
 
   useEffect(() => {
     fetchWebsite();
   }, [fetchWebsite]);
 
   const stats = useMemo(() => {
-    if (!website?.ticks?.length) return null;
+    if (!website) return null;
 
-    const filteredTicks =
-      regionFilter === "all"
-        ? website.ticks
-        : website.ticks.filter((t) => t.region?.name === regionFilter);
-
-    if (!filteredTicks.length) return null;
-
-    const ticks = [...filteredTicks].sort(
+    const ticks = [...(website.ticks ?? [])].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    const latestTick = ticks[0]!;
-    const totalTicks = ticks.length;
-    const upTicks = ticks.filter((t) => t.status === "Up").length;
-    const uptimePercentage =
-      totalTicks > 0 ? ((upTicks / totalTicks) * 100).toFixed(2) : "0.00";
-    const totalResponseTime = ticks.reduce(
-      (acc, curr) => acc + curr.response_time_ms,
-      0
-    );
+    const apiStats = website.stats;
+    if ((!apiStats || apiStats.totalChecks === 0) && !ticks.length) {
+      return null;
+    }
+
+    const latestTick = ticks[0];
+    const totalChecks = apiStats?.totalChecks ?? ticks.length;
+    const upCount = apiStats?.upCount ?? ticks.filter((t) => t.status === "Up").length;
+    const downCount =
+      apiStats?.downCount ?? ticks.filter((t) => t.status === "Down").length;
+    const uptime =
+      apiStats?.uptimePercentage ??
+      (totalChecks > 0 ? Number(((upCount / totalChecks) * 100).toFixed(2)) : 0);
     const avgResponseTime =
-      totalTicks > 0 ? Math.round(totalResponseTime / totalTicks) : 0;
+      apiStats?.avgResponseTimeMs ??
+      (ticks.length
+        ? Math.round(
+            ticks.reduce((acc, curr) => acc + curr.response_time_ms, 0) /
+              ticks.length
+          )
+        : 0);
 
     return {
-      latestStatus: latestTick.status,
-      lastChecked: formatDate(latestTick.createdAt),
-      responseTime: latestTick.response_time_ms,
-      regionName: latestTick.region?.name ?? "Unknown",
-      uptime: uptimePercentage,
-      upCount: upTicks,
-      downCount: ticks.length - upTicks,
+      latestStatus: latestTick?.status ?? "Unknown",
+      lastChecked: latestTick ? formatDate(latestTick.createdAt) : "Not checked yet",
+      responseTime: latestTick?.response_time_ms ?? 0,
+      regionName: latestTick?.region?.name ?? "Unknown",
+      uptime: uptime.toFixed(2),
+      upCount,
+      downCount,
       avgResponseTime,
-      totalChecks: totalTicks,
-      timeline: ticks.slice(0, 20),
+      totalChecks,
+      timeline: ticks,
+      truncated: apiStats?.truncated ?? false,
+      timelineCount: apiStats?.timelineCount ?? ticks.length,
     };
-  }, [website, regionFilter]);
+  }, [website]);
+
+  const rangeLabel =
+    RANGE_OPTIONS.find((option) => option.value === rangeFilter)?.label ??
+    "Selected range";
 
   const handleRefresh = async () => {
     try {
@@ -150,7 +173,22 @@ export default function WebsiteDetailPage({ websiteId }: WebsiteDetailPageProps)
             <span className="font-medium">Back to Dashboard</span>
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+              <select
+                value={rangeFilter}
+                onChange={(e) => setRangeFilter(e.target.value as StatusRange)}
+                className="pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none cursor-pointer"
+              >
+                {RANGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="relative">
               <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
               <select
@@ -242,12 +280,16 @@ export default function WebsiteDetailPage({ websiteId }: WebsiteDetailPageProps)
                 </span>
                 <span className="mx-2 text-gray-300">•</span>
                 <span>
-                  Region: {stats?.regionName ?? (regionFilter === "all" ? "All" : regionFilter)}
+                  Region:{" "}
+                  {stats?.regionName ??
+                    (regionFilter === "all" ? "All" : regionFilter)}
                 </span>
                 <span className="mx-2 text-gray-300">•</span>
                 <span>
                   Last checked: {stats?.lastChecked ?? "Not checked yet"}
                 </span>
+                <span className="mx-2 text-gray-300">•</span>
+                <span>{rangeLabel}</span>
               </div>
             </div>
           </div>
@@ -256,8 +298,8 @@ export default function WebsiteDetailPage({ websiteId }: WebsiteDetailPageProps)
         {!stats ? (
           <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-green-100 shadow-sm p-8 text-center text-gray-600">
             {regionFilter === "all"
-              ? "No monitoring checks yet."
-              : `No monitoring checks for region "${regionFilter}" yet.`}
+              ? `No monitoring checks in the ${rangeLabel.toLowerCase()}.`
+              : `No monitoring checks for region "${regionFilter}" in the ${rangeLabel.toLowerCase()}.`}
           </div>
         ) : (
           <>
@@ -303,10 +345,12 @@ export default function WebsiteDetailPage({ websiteId }: WebsiteDetailPageProps)
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    Recent Status History
+                    Status History
                   </h2>
                   <p className="text-gray-500 text-sm">
-                    Most recent monitoring checks (Latest first)
+                    {stats.truncated
+                      ? `Showing latest ${stats.timelineCount} of ${stats.totalChecks} checks (${rangeLabel.toLowerCase()})`
+                      : `Checks in range · latest first (${rangeLabel.toLowerCase()})`}
                   </p>
                 </div>
               </div>
@@ -384,7 +428,7 @@ export default function WebsiteDetailPage({ websiteId }: WebsiteDetailPageProps)
                     {stats.totalChecks}
                   </div>
                   <div className="text-gray-500 text-sm font-medium">
-                    Total Checks Recorded
+                    Total Checks in Range
                   </div>
                 </div>
               </div>

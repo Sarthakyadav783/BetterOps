@@ -66,46 +66,103 @@ app.get("/websites", authMiddleware, async (req, res) => {
     });
 });
 
+const STATUS_RANGES = {
+    "1h": 60 * 60 * 1000,
+    "24h": 24 * 60 * 60 * 1000,
+    "7d": 7 * 24 * 60 * 60 * 1000,
+    "30d": 30 * 24 * 60 * 60 * 1000,
+} as const;
+
+type StatusRange = keyof typeof STATUS_RANGES;
+const TIMELINE_LIMIT = 48;
+
 app.get("/status/:websiteId", authMiddleware, async (req, res) => {
+    const websiteId = req.params.websiteId as string;
+    const rangeParam = typeof req.query.range === "string" ? req.query.range : "24h";
+    const range: StatusRange = rangeParam in STATUS_RANGES
+        ? (rangeParam as StatusRange)
+        : "24h";
+    const regionName =
+        typeof req.query.region === "string" && req.query.region !== "all"
+            ? req.query.region
+            : undefined;
+
     const website = await prismaClient.website.findFirst({
         where: {
             user_id: req.userId!,
-            id: req.params.websiteId as string,
+            id: websiteId,
         },
-        include: {
-            ticks: {
-                orderBy: [{
-                    createdAt: 'desc',
-                }],
-                take: 20,
-                include: {
-                    region: {
-                        select: {
-                            id: true,
-                            name: true,
-                        },
-                    },
-                },
-            }
-        }
-    })
+    });
 
     if (!website) {
         res.status(409).json({
-            message: "Website not found"
-        })
+            message: "Website not found",
+        });
         return;
     }
+
+    const since = new Date(Date.now() - STATUS_RANGES[range]);
+    const tickWhere = {
+        website_id: websiteId,
+        createdAt: { gte: since },
+        ...(regionName
+            ? { region: { name: regionName } }
+            : {}),
+    };
+
+    const [ticks, aggregate, upCount, downCount, unknownCount] = await Promise.all([
+        prismaClient.website_tick.findMany({
+            where: tickWhere,
+            orderBy: { createdAt: "desc" },
+            take: TIMELINE_LIMIT,
+            include: {
+                region: {
+                    select: { id: true, name: true },
+                },
+            },
+        }),
+        prismaClient.website_tick.aggregate({
+            where: tickWhere,
+            _count: { _all: true },
+            _avg: { response_time_ms: true },
+        }),
+        prismaClient.website_tick.count({
+            where: { ...tickWhere, status: "Up" },
+        }),
+        prismaClient.website_tick.count({
+            where: { ...tickWhere, status: "Down" },
+        }),
+        prismaClient.website_tick.count({
+            where: { ...tickWhere, status: "Unknown" },
+        }),
+    ]);
+
+    const totalChecks = aggregate._count._all;
+    const uptimePercentage =
+        totalChecks > 0
+            ? Number(((upCount / totalChecks) * 100).toFixed(2))
+            : 0;
 
     res.json({
         url: website.url,
         id: website.id,
         user_id: website.user_id,
         time_added: website.time_added,
-        ticks: website.ticks,
-    })
-
-})
+        range,
+        since,
+        ticks,
+        stats: {
+            totalChecks,
+            upCount,
+            downCount,
+            unknownCount,
+            avgResponseTimeMs: Math.round(aggregate._avg.response_time_ms ?? 0),
+            uptimePercentage,
+            timelineCount: ticks.length,
+            truncated: totalChecks > ticks.length,
+        },
+    });
+});
 
 
 app.post("/user/signup",async (req,res)=>{
