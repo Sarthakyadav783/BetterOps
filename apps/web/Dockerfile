@@ -11,7 +11,7 @@ COPY apps/web ./apps/web
 
 WORKDIR /app/apps/web
 
-ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ARG NEXT_PUBLIC_API_URL=/api
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 RUN bun run build

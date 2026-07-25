@@ -9,6 +9,14 @@ const app=express();
 app.use(cors({ origin: true }));
 app.use(express.json());
 
+// Ingress serves API under /api; strip so existing routes keep working
+app.use((req, _res, next) => {
+    if (req.url === "/api" || req.url.startsWith("/api/")) {
+        req.url = req.url.slice(4) || "/";
+    }
+    next();
+});
+
 app.post("/website", authMiddleware, async (req, res) => {
     if (!req.body.url) {
         res.status(411).json({ message: "URL is required in the request body." });

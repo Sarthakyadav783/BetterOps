@@ -65,9 +65,16 @@ metadata:
   namespace: betterops
   labels:
     app.kubernetes.io/part-of: betterops
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
+  tls:
+    - hosts:
+        - 212.2.253.118.nip.io
+      secretName: betterops-tls
   rules:
-    - http:
+    - host: 212.2.253.118.nip.io
+      http:
         paths:
           - path: /api
             pathType: Prefix
