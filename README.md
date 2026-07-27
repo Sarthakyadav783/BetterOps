@@ -7,7 +7,7 @@ Multi-region website checks powered by Redis Streams: add a URL, workers verify 
 ## Screenshots
 
 ### Architecture
-![Architecture](images/Architecture.png)
+![Architecture](images/Architecture.jpeg)
 
 ### Home
 ![Home page](images/home-page.png)
