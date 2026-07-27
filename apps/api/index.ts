@@ -35,6 +35,29 @@ app.post("/website", authMiddleware, async (req, res) => {
     })
 });
 
+app.delete("/website/:websiteId", authMiddleware, async (req, res) => {
+    const websiteId = req.params.websiteId as string;
+
+    const website = await prismaClient.website.findFirst({
+        where: {
+            id: websiteId,
+            user_id: req.userId!,
+        },
+    });
+
+    if (!website) {
+        res.status(404).json({ message: "Website not found" });
+        return;
+    }
+
+    await prismaClient.$transaction([
+        prismaClient.website_tick.deleteMany({ where: { website_id: websiteId } }),
+        prismaClient.website.delete({ where: { id: websiteId } }),
+    ]);
+
+    res.json({ id: websiteId });
+});
+
 app.get("/regions", authMiddleware, async (_req, res) => {
     const regions = await prismaClient.region.findMany({
         orderBy: { name: "asc" },

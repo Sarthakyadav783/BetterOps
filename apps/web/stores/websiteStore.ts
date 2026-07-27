@@ -11,6 +11,7 @@ interface WebsiteState {
   // Actions
   fetchWebsites: () => Promise<void>;
   addWebsite: (url: string) => Promise<void>;
+  deleteWebsite: (id: string) => Promise<void>;
   refreshWebsites: () => Promise<void>;
 }
 
@@ -56,6 +57,17 @@ export const useWebsiteStore = create<WebsiteState>((set, get) => ({
       await get().fetchWebsites();
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to add website');
+    }
+  },
+
+  deleteWebsite: async (id: string) => {
+    try {
+      await apiClient.delete(`/website/${id}`);
+      set({
+        websites: get().websites.filter((site) => site.id !== id),
+      });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete website');
     }
   },
 

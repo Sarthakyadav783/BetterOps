@@ -10,11 +10,13 @@ import {
   XCircle,
   AlertCircle,
   Clock,
+  Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/HelpfullFunction";
 import { apiClient } from "@/lib/AxiosHandling";
+import { useWebsiteStore } from "@/stores/websiteStore";
 import type { StatusRange, Website } from "@/types";
 
 interface WebsiteDetailPageProps {
@@ -32,11 +34,13 @@ const RANGE_OPTIONS: { value: StatusRange; label: string }[] = [
 
 export default function WebsiteDetailPage({ websiteId }: WebsiteDetailPageProps) {
   const router = useRouter();
+  const deleteWebsite = useWebsiteStore((state) => state.deleteWebsite);
   const [website, setWebsite] = useState<Website | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
   const [regionFilter, setRegionFilter] = useState<string>("all");
   const [rangeFilter, setRangeFilter] = useState<StatusRange>("24h");
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchWebsite = useCallback(async () => {
     setLoading(true);
@@ -132,6 +136,25 @@ export default function WebsiteDetailPage({ websiteId }: WebsiteDetailPageProps)
     }
   };
 
+  const handleDelete = async () => {
+    if (!website) return;
+    const confirmed = window.confirm(
+      `Remove ${website.url} from monitoring? This deletes all check history for this site.`
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      await deleteWebsite(websiteId);
+      toast.success("Website removed");
+      router.push("/dashboard");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete website");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading && !website) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center text-green-800">
@@ -207,10 +230,21 @@ export default function WebsiteDetailPage({ websiteId }: WebsiteDetailPageProps)
 
             <button
               onClick={handleRefresh}
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 border border-gray-200 hover:border-green-200 rounded-lg transition-all shadow-sm"
+              disabled={deleting}
+              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 border border-gray-200 hover:border-green-200 rounded-lg transition-all shadow-sm disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
               <span>Refresh</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting || loading}
+              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-lg transition-all shadow-sm disabled:opacity-50"
+            >
+              <Trash2 className={`w-4 h-4 ${deleting ? "animate-pulse" : ""}`} />
+              <span>{deleting ? "Deleting…" : "Delete"}</span>
             </button>
           </div>
         </div>
