@@ -17,6 +17,11 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: betterops
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jqPathExpressions:
+        - .status
   syncPolicy:
     automated:
       prune: true
