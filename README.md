@@ -6,11 +6,9 @@ Multi-region website checks powered by Redis Streams: add a URL, workers verify 
 
 ## Demo
 
-<
+[![BetterOps Demo](https://img.youtube.com/vi/lamJImwouwU/maxresdefault.jpg)](https://youtu.be/lamJImwouwU)
 
-Uploading Screen Recording 2026-07-27 at 5.47.10 PM.mov…
-
->
+▶️ [Watch the BetterOps Demo](https://youtu.be/lamJImwouwU)
 
 ## Screenshots
 
