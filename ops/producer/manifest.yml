@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: producer
-          image: sarthakyadav783/betterops-producer:latest
+          image: sarthakyadav783/betterops-producer:dca7d9d00bc96f09438a8d9b50e0fcf9b646f6d2
           imagePullPolicy: Always
           env:
             - name: DATABASE_URL
