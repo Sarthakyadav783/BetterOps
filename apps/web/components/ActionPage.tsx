@@ -244,7 +244,7 @@ export default function WebsiteDetailPage({ websiteId }: WebsiteDetailPageProps)
               className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-lg transition-all shadow-sm disabled:opacity-50"
             >
               <Trash2 className={`w-4 h-4 ${deleting ? "animate-pulse" : ""}`} />
-              <span>{deleting ? "Deleting…" : "Delete"}</span>
+              <span>{deleting ? "Removing…" : "Remove site"}</span>
             </button>
           </div>
         </div>
