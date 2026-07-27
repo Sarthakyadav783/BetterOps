@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: sarthakyadav783/betterops-web:f8a77099bc28acbdbd8eb32a5828cf4845e451db
+          image: sarthakyadav783/betterops-web:98c1d9b004d782d1a5421fdc8b05d6fcb86ae89d
           imagePullPolicy: Always
           ports:
             - name: http

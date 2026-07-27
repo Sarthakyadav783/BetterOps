@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: consumer
-          image: sarthakyadav783/betterops-consumer:f8a77099bc28acbdbd8eb32a5828cf4845e451db
+          image: sarthakyadav783/betterops-consumer:98c1d9b004d782d1a5421fdc8b05d6fcb86ae89d
           imagePullPolicy: Always
           env:
             - name: REGION_ID
@@ -69,7 +69,7 @@ spec:
     spec:
       containers:
         - name: consumer
-          image: sarthakyadav783/betterops-consumer:f8a77099bc28acbdbd8eb32a5828cf4845e451db
+          image: sarthakyadav783/betterops-consumer:98c1d9b004d782d1a5421fdc8b05d6fcb86ae89d
           imagePullPolicy: Always
           env:
             - name: REGION_ID
