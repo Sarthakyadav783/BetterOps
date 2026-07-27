@@ -4,7 +4,7 @@ Uptime monitoring and incident management, simplified.
 
 Multi-region website checks powered by Redis Streams: add a URL, workers verify it from regions like India and the USA, and the dashboard shows status, response time, and history.
 
-## Demo
+## Demo Video
 
 [![BetterOps Demo](https://img.youtube.com/vi/lamJImwouwU/hqdefault.jpg)](https://youtu.be/lamJImwouwU)
 
