@@ -2,7 +2,15 @@
 
 Uptime monitoring and incident management, simplified.
 
-Multi-region website checks powered by Redis Streams: add a URL, workers verify it from regions like India and Usa, and the dashboard shows status, response time, and history.
+Multi-region website checks powered by Redis Streams: add a URL, workers verify it from regions like India and the USA, and the dashboard shows status, response time, and history.
+
+## Demo
+
+<
+
+Uploading Screen Recording 2026-07-27 at 5.47.10 PM.mov…
+
+>
 
 ## Screenshots
 
@@ -20,15 +28,14 @@ Multi-region website checks powered by Redis Streams: add a URL, workers verify 
 
 ![Website detail timeline](images/test-web2.png)
 
-
 ## Stack
 
 - **web** — Next.js dashboard & landing
 - **api** — Express auth + website APIs
 - **producer** — pushes sites to Redis Streams
 - **consumer** — regional workers that check URLs and update website ticks
-- **packages/db** — Prisma + Postgres 
-- **packages/redisstream** — shared Redis stream helpers
+- **packages/db** — Prisma + Postgres
+- **packages/redisstream** — shared Redis Stream helpers
 
 ## Deploy & CI/CD
 
