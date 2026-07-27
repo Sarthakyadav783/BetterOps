@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: betterops
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Sarthakyadav783/BetterOps.git
+    targetRevision: main
+    path: ops
+    directory:
+      recurse: true
+      exclude: "{argocd/**,secrets/**,redis/consumer-groups-init.yml,README.md}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: betterops
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

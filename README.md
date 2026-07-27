@@ -30,3 +30,7 @@ Multi-region website checks powered by Redis Streams: add a URL, workers verify 
 - **packages/db** — Prisma + Postgres 
 - **packages/redisstream** — shared Redis stream helpers
 
+## Deploy & CI/CD
+
+Push app changes to `main` → **GitHub Actions** builds images → bumps tags in `ops/` → **Argo CD** syncs the cluster. See [ops/README.md](ops/README.md).
+

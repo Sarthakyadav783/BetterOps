@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "ops/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  REGISTRY: docker.io
+  IMAGE_OWNER: sarthakyadav783
+  MANIFEST_DIR: ops
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api
+            dockerfile: apps/api/Dockerfile
+          - service: web
+            dockerfile: apps/web/Dockerfile
+          - service: producer
+            dockerfile: apps/producer/Dockerfile
+          - service: consumer
+            dockerfile: apps/consumer/Dockerfile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/betterops-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/betterops-${{ matrix.service }}:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=/api
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  update-manifests:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Bump image tags in ops/
+        env:
+          TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for svc in api web producer consumer; do
+            pattern="${IMAGE_OWNER}/betterops-${svc}:"
+            if ! grep -rq "$pattern" "${MANIFEST_DIR}"; then
+              echo "No image reference matching ${pattern} under ${MANIFEST_DIR}/"
+              exit 1
+            fi
+            find "${MANIFEST_DIR}" -type f \( -name '*.yml' -o -name '*.yaml' \) -print0 \
+              | xargs -0 sed -i "s|${IMAGE_OWNER}/betterops-${svc}:[^ \"']*|${IMAGE_OWNER}/betterops-${svc}:${TAG}|g"
+          done
+          echo "Updated images to tag ${TAG}"
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${MANIFEST_DIR}"
+          if git diff --staged --quiet; then
+            echo "No manifest changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(ops): bump images to ${GITHUB_SHA}"
+          git push
